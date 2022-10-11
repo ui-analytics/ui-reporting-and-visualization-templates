@@ -1,0 +1,116 @@
+---
+title: "Descriptive Statistics Table"
+date: "`r Sys.Date()`"
+
+output: 
+  html_document:
+      toc: true
+      theme: lumen
+      highlight: textmate
+      
+# Author Comment: Updated file after working more with both the HTML and Latex files
+# Made some changes to the theme from the previous file       
+---
+
+## Preliminary Steps
+
+This Markdown file provides the template for researchers to create replicable tables using the modelsummary and GT packages. The first step in this process is to run the code chunk below. This will load the requisite packages and theme for generating the table(s):
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.duplicate.label = "allow")
+
+rm(list = ls())
+
+# Libraries
+library(tidyverse)
+library(haven)
+library(readr)
+library(modelsummary)
+library(gt)
+
+# Theme for Tables
+# Based on the apa theme created for GT
+# source: https://gist.github.com/pdparker/1b61b6d36d09cb295bf286a931990159
+apa_style <- function(data) {
+  data %>%
+    opt_table_lines(extent = "none") %>%
+    tab_options(
+      heading.border.bottom.width = 2,
+      heading.border.bottom.color = "black",
+      heading.border.bottom.style = "solid",
+      table.border.top.color = "white",
+      table_body.hlines.color = "white",
+      table_body.border.top.color = "black",
+      table_body.border.top.style = "solid",
+      table_body.border.top.width = 1,
+      heading.title.font.size = 12,
+      table.font.size = 12,
+      heading.subtitle.font.size = 12,
+      heading.align = "left",
+      table_body.border.bottom.color = "black",
+      table_body.border.bottom.width = 2,
+      table_body.border.bottom.style = "solid",
+      column_labels.border.bottom.color = "black",
+      column_labels.border.bottom.style = "solid",
+      column_labels.border.bottom.width = 1
+    ) %>%
+      opt_table_font(font = "times")
+}
+```
+
+## Getting Data into the R Environment
+
+The next step in the process is to load your dataset and see the variables you want to include in the descriptive table. To load data into the R environment using RStudio, complete the following steps:
+
+* From the Environment tab click on the Import Dataset Menu
+* Select the file extension from the option
+* Either enter the file name or select "browse" in the top line of the prompt.
+* Once the file has been selected, name the dataset under the import options box and click "import".
+
+You can also run the code below: 
+
+```{r data, results='hide'}
+District_Turnout <- read_dta("Example2.dta")
+```
+
+The next step in the process is to get a handle on the data. We will be using the glimpse function to provide a snapshot of the variables (specifically their structure) in order to determine which variables we want to include in the tables. 
+
+```{r, results='hide'}
+# Pre-canned Dataset
+glimpse(District_Turnout)
+```
+
+Now that we have loaded the data and understand the variables we want to include in the table, the next step is to build the table itself. Below is the code to generate an apa style table. 
+
+```{r, eval=FALSE}
+datasummary(vars ~ 
+            ( (Obs. = NUnique) + (Avg. = Mean) + (Std.Dev. = SD) + (Min. = Min) + (Max. = Max) ),
+            data = data.frame.name,
+            output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 2:6)  %>% 
+  tab_header(title = "Table Number", subtitle = md("*Descriptive table title*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")
+```
+
+While this may seem intimidating at first, the researcher only has to change two lines:
+
+* *vars*: this line allows researchers to list the variables of interest; it is important to understand this function as written only focuses on continuous variables. Do not include categorical variables in this particular function as the statistics will not be relevant.
+* *data.frame.name*: this is the dataset you imported into the R environment. 
+
+An example of the table is as follows:
+
+```{r descriptive}
+datasummary(turnout + electorateunion + turnoutch  ~ 
+            ( (Obs. = NUnique) + (Avg. = Mean) + (Std.Dev. = SD) + (Min. = Min) + (Max. = Max) ),
+            data = District_Turnout,
+            output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 2:6)  %>% 
+  tab_header(title = "Table Number", subtitle = md("*Descriptive table title*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")
+```
+
