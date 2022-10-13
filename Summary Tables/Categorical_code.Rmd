@@ -1,0 +1,100 @@
+---
+title: "Descriptive Statistics Table"
+html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+
+# DO NOT CHANGE THESE OPTIONS
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.duplicate.label = "allow")
+
+rm(list = ls())
+
+# Libraries
+library(tidyverse)
+library(haven)
+library(readr)
+library(modelsummary)
+library(gt)
+
+# Theme for Tables
+# Based on the apa theme created for GT
+# source: https://gist.github.com/pdparker/1b61b6d36d09cb295bf286a931990159
+apa_style <- function(data) {
+  data %>%
+    opt_table_lines(extent = "none") %>%
+    tab_options(
+      heading.border.bottom.width = 2,
+      heading.border.bottom.color = "black",
+      heading.border.bottom.style = "solid",
+      table.border.top.color = "white",
+      table_body.hlines.color = "white",
+      table_body.border.top.color = "black",
+      table_body.border.top.style = "solid",
+      table_body.border.top.width = 1,
+      heading.title.font.size = 12,
+      table.font.size = 12,
+      heading.subtitle.font.size = 12,
+      heading.align = "left",
+      table_body.border.bottom.color = "black",
+      table_body.border.bottom.width = 2,
+      table_body.border.bottom.style = "solid",
+      column_labels.border.bottom.color = "black",
+      column_labels.border.bottom.style = "solid",
+      column_labels.border.bottom.width = 1
+    ) %>%
+      opt_table_font(font = "georgia")
+}
+```
+
+```{r include=FALSE}
+# Switch the dataset by completing the following steps:
+  ## Click on the Import Dataset dropdown menu from the Environment pane (top right corner).
+  ## Select the file extension from the options listed.
+  ## Either enter the file name or select "browse" in the top line of the prompt.
+  ## Once the file has been selected, name the dataset under the import options box and click "import".
+
+data <- read_csv('https://vincentarelbundock.github.io/Rdatasets/csv/palmerpenguins/penguins.csv')
+glimpse(data)
+```
+
+
+```{r}
+
+# Basic Example of a descriptive table on three separate categorical variables
+# Notice how I can rename the variables to ensure they are capitalized within the line of code
+#   - Have the new name of the variable on the left and the old variable after the equals sign
+#   - Importantly, they need to be bracketed within parentheses
+
+datasummary( (Island = island) + (Species = species) + ( Sex = sex) ~ (Count = N) + Percent(),
+            data = data,
+            output = 'gt') %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 3:4)  %>% 
+  tab_header(title = "Table Number", subtitle = md("*Descriptive table title*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")
+```
+
+```{r}
+
+# Example of Nesting, which displays variables and statistics within other categorical variables.
+#   - This is denoted by the * symbol, and can be used on either side of the equation.
+
+# Included the +1 in order to calculate a row with the total number of observations
+
+datasummary( (Island = island) + (Species = species) + 1 ~ ( (Sex = sex) * ( (Count = N) + Percent() ) ),
+            data = data,
+            output = 'gt') %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 3:6)  %>% 
+  tab_header(title = "Table Number", subtitle = md("*Descriptive table title*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")
+```
+
+
