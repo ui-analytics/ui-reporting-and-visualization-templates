@@ -1,0 +1,265 @@
+---
+title: "Standard Tables Example"
+author: "Eric Moore"
+date: "`r Sys.Date()`"
+
+output: 
+  html_document:
+      toc: true
+      toc_float: true
+      theme: simplex
+      highlight: kate
+      df_print: paged
+---
+
+## Setting the Environment
+
+This Markdown file provides an example for researchers on how to use the code in the SuTables_Code Markdown file that can be found in the Github Folder. Prior to running the code to generate the tables, however, we first need to set up the environment. This includes setting a few options for knitr (RMarkdown's tool to generate code), loading the requisite packages, and creating the theme for the tables.
+
+```{r setup, warning=F, message=F}
+
+# DO NOT CHANGE THESE OPTIONS
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.duplicate.label = "allow")
+
+rm(list = ls())
+
+# Libraries
+library(tidyverse)
+library(haven)
+library(readr)
+library(modelsummary)
+library(gt)
+library(kableExtra)
+library(webshot2)
+
+# Theme for Tables, based on the apa theme created for GT
+# source: https://gist.github.com/pdparker/1b61b6d36d09cb295bf286a931990159
+apa_style <- function(data) {
+  data %>%
+    opt_table_lines(extent = "none") %>%
+    tab_options(
+      table.align = "left",
+      heading.border.bottom.width = 2,
+      heading.border.bottom.color = "black",
+      heading.border.bottom.style = "solid",
+      table.border.top.color = "white",
+      table_body.hlines.color = "white",
+      table_body.border.top.color = "black",
+      table_body.border.top.style = "solid",
+      table_body.border.top.width = 1,
+      heading.title.font.size = 16,
+      table.font.size = 12,
+      heading.subtitle.font.size = 14,
+      heading.align = "left",
+      table_body.border.bottom.color = "black",
+      table_body.border.bottom.width = 2,
+      table_body.border.bottom.style = "solid",
+      column_labels.border.bottom.color = "black",
+      column_labels.border.bottom.style = "solid",
+      column_labels.border.bottom.width = 1,
+      data_row.padding = px(5)
+    ) %>%
+      opt_table_font(font = "georgia")
+}
+```
+
+## Getting Data into the R Environment
+
+The next step in the process is to load your dataset and see the variables you want to include in the descriptive table. To load data into the R environment using RStudio, complete the following steps:
+
+* From the Environment tab click on the Import Dataset Menu
+* Select the file extension from the option
+* Either enter the file name or select "browse" in the top line of the prompt.
+* Once the file has been selected, name the dataset under the import options box and click "import".
+
+The following represents an example of manually importing a dataset, and performing a few modifications or changes:
+```{r data}
+
+# The following code brings in a test dataset in order to run the tables: 
+example <- 'https://vincentarelbundock.github.io/Rdatasets/csv/Ecdat/Treatment.csv'
+example <- read.csv(example)
+
+example <- example %>%
+           mutate(PriorInc. = re75 / 1000,
+                  PostInc. = re78 / 1000,
+                  Treatment = ifelse(treat == TRUE, 'Treatment', 'Control'),
+                  Married = ifelse(married == TRUE, 'Yes', 'No')) %>%
+            dplyr::select(PriorInc., PostInc., Treatment,
+                   Ethnicity = ethn, Age = age, Education = educ, Married)
+
+# This converts the the dataset into a dataframe
+# Necessary to run some of the functions for datasummary 
+df2 <- data.frame(rbind(example))
+```
+<br> 
+It should be noted that the code in the SuTables_Code Markdown file (under group 'data') converts the data file into a data.frame. This is necessary as some of the functions utilized by datasummary require this specific format in order to run. Therefore, researchers should first import their data, and then convert it into a data.frame format (simply run the final line of code in the above section).
+
+## General Information about Creating Tables
+
+The following chunks of code provide researchers the opportunity to have consistent looking tables when providing summary statistics on both categorical and numerical variables. It should be noted, however, that particular parts of the code need to be altered in order to be usable for the individual research project. 
+
+Researchers should alter the following sections of the code:
+
+1. df2: This constitutes the specific dataset that researchers are using; switch this to the name of your dataset.
+2. tab_header: Researchers should change the title and subtitle, though ensure to keep the subtitle within the asterisks (*) as this italicizes the subtitle in a way that is consistent with APA style.
+3. tab_footnote: Two possible lines are provided if researchers need to include a footnote for the table. Feel free to delete if it is not applicable for the tables you are using. 
+4. tab_options: this determines the width of the table in relation to the greater page width. Researchers can change this to better fit the variables they are using.
+5. gtsave: this option saves the table as a pdf document in your working directory (For information on changing the working directory for your project, reference this webpage from [Postit Support](https://support.posit.co/hc/en-us/articles/200711843-Working-Directories-and-Workspaces-in-the-RStudio-IDE). Delete the # symbol in the final line of code and change the table_example line to a descriptive title. 
+
+## Creating Tables for Numeric Variables
+
+The following two chunks of code have the ability to create a summary table for all the numeric variables in your dataset. The first chunk utilizes the datasummary_skim function which, as the type suggests, will automatically include only the numeric variables within your dataset:
+
+```{r table:numeric1}
+datasummary_skim(df2, type = "numeric",
+                 output = 'gt', fmt = "%.2f",
+                 histogram = F) %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 2:8)  %>% 
+  tab_header(title = "Table 1", subtitle = md("*Summary Statistics on All Numeric Variables*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table if applicable.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table if applicable.")  %>%
+  tab_options(table.width = pct(50)) #  %>%  gtsave("table_example.pdf")
+```
+<br>
+The previous code, however, limits the researcher by including a pre-canned set of summary statistics. If you wanted to change these statistics, for example wanted the total number of observations and not just the unique number, you could run the following code:
+
+```{r table:numeric2}
+# This code is an alternative way to calculate a summary table for all numeric variables
+# Requires some more options, but it also provides more autonomy over what statistics are reported
+
+datasummary(All(df2, numeric=TRUE) ~  
+           ((Obs. = N) + (Avg. = Mean) + (Std.Dev. = SD) + (Min. = Min) + (Max. = Max)),
+            data = df2,
+            output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 2:6)  %>% 
+  tab_header(title = "Table 2", subtitle = md("*Summary Statistics on All Numeric Variables, Alternative*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+  tab_options(table.width = pct(50)) #  %>%  gtsave("table_example.pdf")
+```
+<br>
+The benefit here is that you can also rename the statistics used (second row of the code). The statistic values are on the right hand side, while the name you wish to print in the table is placed on the left had side of the = sign. 
+
+## Creating Tables for Categorical Variables
+
+Researchers may also want to create a basic table comprised of just their categorical variables. For this, we go back to the datasummary_skim function, but with two key substitutions. First we switch the type from numeric to categorical. Second, we switch the columns in the cols_align line of code to better reflect the summary statistics that will be reported (Observations and Percent). 
+
+```{r table:categorical}
+# This is the basic code to quickly summarize all categorical variables in the dataset
+
+datasummary_skim(df2, type = "categorical",
+                 output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 3:4)  %>% 
+  tab_header(title = "Table 3", subtitle = md("*Summary Statistics on All Categorical Variables*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+    cols_width(
+    columns = c(1) ~ px(100),
+    columns = c(2:4) ~ px(75)  ) #  %>%  gtsave("table_example.pdf")
+```
+
+## Manually Choosing the Variables in the Summary Table
+
+It is a rare scenario, however, for researchers to use every type of variable, whether it is numeric or categorical, within their summary tables. For this we go back to the datasummary function and then explicitly list the variables that researchers want to be included in the table. The following code mimics the output from Table 2, but instead of utilizing the All option, we list out the variables of interest:
+
+```{r table:numeric3}
+
+# This code allows researchers to specify both the variables (numeric) and the summary statistics to report 
+datasummary((`Income (Prior)` = PriorInc.) + (`Income (Post)` = PostInc.) + Age ~ 
+           ((Obs. = N) + (Avg. = Mean) + (Std.Dev. = SD) + (Min. = Min) + (Max. = Max)),
+            data = df2,
+            output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 2:6)  %>% 
+  tab_header(title = "Table 4", subtitle = md("*Summary Statistics on All Numeric Variables, Alternative*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+  tab_options(table.width = pct(50)) #  %>%  gtsave("table_example.pdf")
+```
+
+## Cross-Tabulations
+
+Sometimes we want to know the distribution of variables and statistics within other categorical variables. We therefore run a cross-tabulation on these two variables by going back to the datasummary function and using the * symbol. This can be used on either side of the equation (~).
+
+### Crosstabs between Categorical Variables
+
+In the example below we calculate a cross tab of Ethnicity and Marriage. We include the +1 on the left hand side of the equation in order to calculate the total umber of observations by column:
+
+```{r table:crosstab1}
+datasummary(Ethnicity + 1 ~ ( Married * ( (Count = N) + Percent() ) ),
+            data = df2,
+            output = 'gt') %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 2:5)  %>% 
+  tab_header(title = "Table 5", subtitle = md("*Example of Basic Cross Tabulation*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+  tab_options(table.width = pct(40)) #  %>%  gtsave("table_example.pdf")
+```
+<br>
+Similar to the basic summary table, however, you may want to know the distribution of all your categorical variables within one particular variable (for example a Treatment variable). We can therefore add additional variables by using the + symbol. 
+
+The example below looks at the distribution of Ethnicity and Marriage across the Treatment Variable (renamed in the line of code):
+```{r table:crosstab2}
+datasummary(Ethnicity + Married + 1 ~ ( (Treat = Treatment) * ( (Count = N) + Percent() ) ),
+            data = df2,
+            output = 'gt') %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 3:6)  %>% 
+  tab_header(title = "Table 6", subtitle = md("*Multiple Cross Tabulations using DataSummary*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.") %>%
+  tab_options(table.width = pct(50)) #  %>%  gtsave("table_example.pdf")
+```
+
+### Crosstabs between Categorical and Numeric Variables
+
+We can also run a crosstab on the numerical variables as well. The code below utilizes the All wrapper in the datasummary function to run summary statistics on all the numeric variables over a categorical variable. Following the example of the previous table, we utilize the Treatment variable once again: 
+
+```{r table:crosstab3}
+datasummary(All(df2, numeric=TRUE) ~  
+           ( (Treat = Treatment) * ((Avg. = Mean) + (Std.Dev. = SD)) ),
+            data = df2,
+            output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 2:5)  %>% 
+  tab_header(title = "Table 7", subtitle = md("*Summary Statistics on Numeric Variables by Treatment*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+  tab_options(table.width = pct(50)) #  %>%  gtsave("table_example.pdf")
+```
+<br>
+It should be noted that the code above once again utilizes the All option to run cross-tabs on all the numeric variables in the dataset across Treatment. Refer back to Table 4 or Table 6 for an exmaple on how to specify multiple variables in which to obtain the summary statistics on.  
+
+## Bringing Everything Together
+
+Instead of including multiple tables delineated by the type of variables, researchers may want to create one combined table that plots both numeric and categorical variables across one categorical variable (Treatment). The table below utilizes the datasummary_balance function to achieve this end:
+
+```{r table:combined}
+datasummary_balance(~ Treatment,
+                    data = df2, output = 'gt',
+                    dinm = F) %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 3:6)  %>% 
+  tab_header(title = "Table 8", subtitle = md("*Descriptive Statistics over Treatment Status*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.") %>%
+  tab_options(table.width = pct(60)) #  %>%  gtsave("table_example.pdf")
+```
+<br>
+There is an option above related to proving the difference in means for numerical variables (dinm). If researchers switch this option from F to T, then two additional columns will be added to the table to provide the difference in means with uncertainty estimates. If researchers do this, they should also change the columns in the cols_align option from 3:6 to 3:8. It should be noted that researchers must also have the estimatr package installed and loaded. 
+
+## Taking the Next Step: Using the Code for Your Project
+
+The preceding section outlines and explains the code to create various types of summary tables. This Exercise now transitions from explaining the various options that researchers can utilize to detailing how to actually use this code. Use the following steps to create pdf versions of your various summary tables:
+
+1. Download the SuTables_Code Rmd file from the GitHub Repository and open this in RStudio
+2. Save the file under a new name (relevant to your project), and run the "setup" code chunk by clicking on the green arrow at the top far right of the code
+3. Import your dataset of interest by following the previous instructions
+4. Once you have determined the type of table you wish to utilize, change the various aspects of the code as necessary. 
+5. Delete the # symbol in the final line of the table code and change the file name after gtsave to a descriptive title (keeping the parentheses and .pdf extension)
+

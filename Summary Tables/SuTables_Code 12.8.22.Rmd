@@ -1,0 +1,211 @@
+---
+title: "Descriptive Statistics Table"
+html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+
+# DO NOT CHANGE THESE OPTIONS
+# Simply copy and paste directly into your script/markdown file
+
+knitr::opts_chunk$set(echo = TRUE)
+options(knitr.duplicate.label = "allow")
+
+rm(list = ls())
+
+# Libraries
+library(tidyverse)
+library(haven)
+library(readr)
+library(modelsummary)
+library(gt)
+library(kableExtra)
+library(webshot2)
+
+# Theme for Tables, based on the apa theme created for GT
+# source: https://gist.github.com/pdparker/1b61b6d36d09cb295bf286a931990159
+apa_style <- function(data) {
+  data %>%
+    opt_table_lines(extent = "none") %>%
+    tab_options(
+      table.align = "left",
+      heading.border.bottom.width = 2,
+      heading.border.bottom.color = "black",
+      heading.border.bottom.style = "solid",
+      table.border.top.color = "white",
+      table_body.hlines.color = "white",
+      table_body.border.top.color = "black",
+      table_body.border.top.style = "solid",
+      table_body.border.top.width = 1,
+      heading.title.font.size = 16,
+      table.font.size = 12,
+      heading.subtitle.font.size = 14,
+      heading.align = "left",
+      table_body.border.bottom.color = "black",
+      table_body.border.bottom.width = 2,
+      table_body.border.bottom.style = "solid",
+      column_labels.border.bottom.color = "black",
+      column_labels.border.bottom.style = "solid",
+      column_labels.border.bottom.width = 1,
+      data_row.padding = px(5)
+    ) %>%
+      opt_table_font(font = "georgia")
+}
+```
+
+
+```{r data-import, include=FALSE}
+
+# Example of importing a datafile into R (and converting into a dataframe)
+example <- 'https://vincentarelbundock.github.io/Rdatasets/csv/Ecdat/Treatment.csv'
+example <- read.csv(example)
+glimpse(example)
+
+example <- example %>%
+           mutate(`Prior Inc.` = re75 / 1000,
+                   `Post Inc.` = re78 / 1000,
+                   Treatment = ifelse(treat == TRUE, 'Treatment', 'Control'),
+                   Married = ifelse(married == TRUE, 'Yes', 'No')) %>%
+           dplyr::select(`Prior Inc.`, `Post Inc.`, Treatment,
+                   Ethnicity = ethn, Age = age, Education = educ, Married)
+
+df2 <- data.frame(rbind(example))
+```
+
+
+
+```{r table:numeric1}
+
+# This is the basic code to quickly summarize all numeric variables in the dataset
+datasummary_skim(df2, type = "numeric",
+                 output = 'gt', fmt = "%.2f",
+                 histogram = F) %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 2:8)  %>% 
+  tab_header(title = "Table 1", subtitle = md("*Summary Statistics on All Numeric Variables*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table if applicable.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table if applicable.")  %>%
+  tab_options(table.width = pct(50)) #  %>%  gtsave("table_example.pdf")
+```
+
+
+```{r table:numeric2}
+
+# This code is an alternative way to calculate a summary table for all numeric variables
+# Requires to explicitly list the summary variables, but
+# it also provides more autonomy over what statistics are reported
+datasummary(All(df2, numeric=TRUE) ~  
+           ((Obs. = N) + (Avg. = Mean) + (Std.Dev. = SD) + (Min. = Min) + (Max. = Max)),
+            data = df2,
+            output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 2:6)  %>% 
+  tab_header(title = "Table 2", subtitle = md("*Summary Statistics on All Numeric Variables, Alternative*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+  tab_options(table.width = pct(50)) #  %>%  gtsave("table_example.pdf")
+```
+
+```{r table:numeric3}
+
+# This code allows researchers to specify both the variables (numeric) and the summary statistics to report 
+datasummary(`Prior Inc.`+ `Post Inc.` + Age ~ 
+           ((Obs. = N) + (Avg. = Mean) + (Std.Dev. = SD) + (Min. = Min) + (Max. = Max)),
+            data = example,
+            output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 2:6)  %>% 
+  tab_header(title = "Table 3", subtitle = md("*Summary Statistics on All Numeric Variables, Alternative*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+  tab_options(table.width = pct(50)) #  %>%  gtsave("table_example.pdf")
+```
+
+
+
+```{r table:categorical, echo=FALSE}
+
+# This is the basic code to quickly summarize all categorical variables in the dataset
+datasummary_skim(df2, type = "categorical",
+                 output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 3:4)  %>% 
+  tab_header(title = "Table 4", subtitle = md("*Summary Statistics on All Categorical Variables*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+    cols_width(
+    columns = c(1) ~ px(100),
+    columns = c(2:4) ~ px(75)  ) #  %>%  gtsave("table_example.pdf")
+```
+
+
+```{r table:crosstab1}
+
+# Example of Nesting, which displays variables and statistics within other categorical variables.
+#   - This is denoted by the * symbol, and can be used on either side of the equation.
+#   - Included the +1 in order to calculate a row with the total number of observations
+datasummary(Ethnicity + 1 ~ ( Married * ( (Count = N) + Percent() ) ),
+            data = df2,
+            output = 'gt') %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 2:5)  %>% 
+  tab_header(title = "Table 5", subtitle = md("*Example of Basic Cross Tabulation*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+  tab_options(table.width = pct(60)) #  %>%  gtsave("table_example.pdf")
+```
+
+
+```{r table:crosstab2}
+
+# This chunk of code mimics the previous cross tabulation, but it adds Married to the left side of the equation
+# and instead calculates the count and percentage across Treatment
+datasummary(Ethnicity + Married + 1 ~ ( (Treat = Treatment) * ( (Count = N) + Percent() ) ),
+            data = df2,
+            output = 'gt') %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 3:6)  %>% 
+  tab_header(title = "Table 6", subtitle = md("*Multiple Cross Tabulations using DataSummary*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.") %>%
+  tab_options(table.width = pct(60)) #  %>%  gtsave("table_example.pdf")
+```
+
+
+```{r table:crosstab3}
+
+# What if we want to nest variables and statistics inside categorical variables?
+# Put another way, what if we want to ascertain the summary statistics 
+datasummary(All(df2, numeric=TRUE) ~  
+           ( (Treat = Treatment) * ((Avg. = Mean) + (Std.Dev. = SD)) ),
+            data = df2,
+            output = 'gt') %>% 
+  apa_style() %>% 
+  cols_align(align = "center", columns = 2:5)  %>% 
+  tab_header(title = "Table 7", subtitle = md("*Summary Statistics on Numeric Variables by Treatment*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.")  %>%
+  tab_options(table.width = pct(50)) #  %>%  gtsave("table_example.pdf")
+```
+
+
+
+
+```{r table:combined, echo=FALSE}
+
+# Basic Example of creating the combined table across Control and Treatment categories
+# This combines both the numeric and categorical variables, though the type of statistics are kept to a minimum
+datasummary_balance(~ Treatment,
+                    data = df2, output = 'gt',
+                    dinm = F) %>% 
+  apa_style() %>%
+  cols_align(align = "center", columns = 3:6)  %>% 
+  tab_header(title = "Table 8", subtitle = md("*Descriptive Statistics over Treatment Status*") ) %>% 
+  tab_footnote(footnote = md( "*Note*: Possible footnote for table.") ) %>%
+  tab_footnote(footnote = "Second possible footnote for table.") %>%
+  tab_options(table.width = pct(70)) #  %>%  gtsave("table_example.pdf")
+```
+
